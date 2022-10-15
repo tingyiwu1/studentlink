@@ -4,13 +4,21 @@ import re
 import html
 from dotenv import load_dotenv
 import os
+import studentlink
+import logging
 
 load_dotenv()
+logging.basicConfig(level=logging.INFO)
 
 USERNAME, PASSWORD = os.environ["USERNAME"], os.environ["PASSWORD"]
 
-
 async def main():
+    async with studentlink.StudentLinkAuth(USERNAME, PASSWORD) as sl:
+        r = await sl.get_cur_schedule()
+        print(r)
+
+
+async def mainn():
     async with aiohttp.ClientSession() as session:
         r1 = await session.get(
             "https://www.bu.edu/link/bin/uiscgi_studentlink.pl/1665505032?ModuleName=allsched.pl"
