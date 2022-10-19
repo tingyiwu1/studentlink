@@ -1,9 +1,15 @@
+from __future__ import annotations
+from typing import Callable, TypeVar
 import aiohttp
 import logging
 import html
 import re
 from yarl import URL
 
+from .modules._module import Module, PublicModule
+
+M = TypeVar("M", bound=Module)
+PM = TypeVar("PM", bound=PublicModule)
 
 class StudentLink:
     def __init__(
@@ -20,11 +26,12 @@ class StudentLink:
         await self.session.__aexit__(*args)
         self.session = None
 
-    @staticmethod
-    def mod_url(module: str):
-        return URL("https://www.bu.edu/link/bin/uiscgi_studentlink.pl").with_query(
-            ModuleName=module
-        )
+    def module(self, module: Callable[[], PM]) -> PM:
+        if not issubclass(module, PublicModule):
+            raise TypeError(
+                f"{module} requires authentication; use StudentLinkAuth instead"
+            )
+        return module(self)
 
 
 class StudentLinkAuth(StudentLink):
@@ -41,7 +48,7 @@ class StudentLinkAuth(StudentLink):
 
     async def __aenter__(self):
         await super().__aenter__()
-        r1 = await self.session.get(StudentLink.mod_url("allsched.pl"))
+        r1 = await self.session.get(Module.mod_url("allsched.pl"))
         execution = r1.url.query["execution"]
         self.logger.info("logging in")
         r2 = await self.session.post(
@@ -55,9 +62,6 @@ class StudentLinkAuth(StudentLink):
             },
         )
         tx, app = re.findall(r"'sig_request': '(TX.+?):(APP.+?)'", await r2.text())[0]
-        # r3 = await self.session.post(
-        #     f"https://api-c6b0c057.duosecurity.com/frame/web/v1/auth?tx={tx}&parent=https://shib.bu.edu/idp/profile/SAML2/Redirect/SSO?execution={execution}"
-        # )
         r3 = await self.session.post(
             URL("https://api-c6b0c057.duosecurity.com/frame/web/v1/auth").with_query(
                 tx=tx,
@@ -74,20 +78,21 @@ class StudentLinkAuth(StudentLink):
             "https://api-c6b0c057.duosecurity.com/frame/prompt",
             data={
                 "sid": sid,
-                "device": "phone1",
+                "device": "phone1",  # TODO: make this more robust
                 "factor": "Duo Push",
+                "dampen_choice": "true",
                 "out_of_date": "",
                 "days_out_of_date": "",
                 "days_to_block": "None",
             },
         )
         txid = (await r4.json())["response"]["txid"]
-        r5 = await self.session.post(
-            f"https://api-c6b0c057.duosecurity.com/frame/status",
+        await self.session.post(
+            "https://api-c6b0c057.duosecurity.com/frame/status",
             data={"sid": sid, "txid": txid},
         )
         r6 = await self.session.post(
-            f"https://api-c6b0c057.duosecurity.com/frame/status",
+            "https://api-c6b0c057.duosecurity.com/frame/status",
             data={"sid": sid, "txid": txid},
         )
         result_url = (await r6.json())["response"]["result_url"]
@@ -103,7 +108,7 @@ class StudentLinkAuth(StudentLink):
         (_, relay_state), (_, SAMLResponse) = re.findall(
             r'input type="hidden" name="(.+?)" value="(.+?)"', await r8.text()
         )
-        r9 = await self.session.post(
+        await self.session.post(
             "https://linklogin.bu.edu/Shibboleth.sso/SAML2/POST",
             data={
                 "RelayState": html.unescape(relay_state),
@@ -113,6 +118,5 @@ class StudentLinkAuth(StudentLink):
         logging.info("logged in")
         return self
 
-    async def get_cur_schedule(self):
-        r = await self.session.get(StudentLink.mod_url("allsched.pl"))
-        return await r.text()
+    def module(self, module: Callable[..., M]) -> M:
+        return module(self)
