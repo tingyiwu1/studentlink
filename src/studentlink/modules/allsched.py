@@ -14,12 +14,12 @@ class AllSched(Module):
         page = await self.get_page()
         soup = BeautifulSoup(page, "html5lib")
         # probably fails if there are no classes
-        _, *data_rows = (
+        _, *data_rows: list[Tag] = (
             soup.find_all(string=re.compile(r"Spring|Summer|Fall|Winter"))[0]
             .find_parent("table")
             .find_all("tr")
         )
-        result = {}
+        result: dict[str, list[ClassView]] = {}
         semester = None
         for tr in data_rows:
             match tr.find_all("td"):
@@ -106,8 +106,7 @@ class AllSched(Module):
                                 day=day,
                                 start=start,
                                 stop=stop,
-                            )
-                            for day in days
+                            ) for day in days
                         ]
                     result[semester].append(
                         ClassView(
