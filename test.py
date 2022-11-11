@@ -6,6 +6,7 @@ from dotenv import load_dotenv
 import os
 import studentlink
 from studentlink.modules.allsched import AllSched
+from studentlink.modules.regsched import RegSched
 import logging
 
 load_dotenv()
@@ -15,9 +16,9 @@ USERNAME, PASSWORD = os.environ["USERNAME"], os.environ["PASSWORD"]
 
 async def main():
     async with studentlink.StudentLinkAuth(USERNAME, PASSWORD) as sl:
-        all = sl.module(AllSched)
+        reg = sl.module(RegSched)
         while True:
-            s = await all.get_schedule()
+            s = await reg.get_schedule()
             print(s)
 
 

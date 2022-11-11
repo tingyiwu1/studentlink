@@ -6,10 +6,9 @@ from studentlink.data.class_ import ClassView, Weekday, Event, Building
 from datetime import datetime
 from bs4.element import Tag
 
-
-class AllSched(Module):
-    MODULE_NAME = "allsched.pl"
-
+class RegSched(Module):
+    MODULE_NAME = "regsched.pl"
+    
     async def get_schedule(self):
         page = await self.get_page()
         soup = BeautifulSoup(page, "html5lib")
@@ -28,7 +27,7 @@ class AllSched(Module):
                     Tag(
                         name="td",
                         attrs={"rowspan": _},
-                        contents=[Tag(name="font", contents=[semester, *_]), *_],
+                        contents=[semester, *_],
                     ),
                     *rest,
                 ]:
@@ -45,59 +44,35 @@ class AllSched(Module):
             match rest:
                 case [
                     Tag(name="td", text=abbreviation),
-                    Tag(name="td"),
                     Tag(name="td", text=status),
                     Tag(name="td", text=cr_hrs),
-                    Tag(
-                        name="td",
-                        contents=[
-                            Tag(name="font", contents=[title, _, instructor]),
-                            *_,
-                        ],
-                    ),
+                    Tag(name="td", contents=[title, _, instructor]),
                     Tag(name="td", text=topic),
                     Tag(name="td", text=type),
-                    Tag(
-                        name="td",
-                        contents=[Tag(name="font", contents=[*events_buildings]), *_],
-                    ),
-                    Tag(
-                        name="td",
-                        contents=[Tag(name="font", contents=[*events_rooms]), *_],
-                    ),
-                    Tag(
-                        name="td",
-                        contents=[Tag(name="font", contents=[*events_days]), *_],
-                    ),
-                    Tag(
-                        name="td",
-                        contents=[Tag(name="font", contents=[*events_starts]), *_],
-                    ),
-                    Tag(
-                        name="td",
-                        contents=[Tag(name="font", contents=[*events_stops]), *_],
-                    ),
-                    Tag(name="td", text=notes),
+                    Tag(name="td", contents=[Tag(name="a", contents=[*event_buildings]), *_]),
+                    Tag(name="td", contents=[*event_rooms]),
+                    Tag(name="td", contents=[*events_days]),
+                    Tag(name="td", contents=[*event_starts]),
+                    Tag(name="td", contents=[*event_stops]),
+                    Tag(name="td", text=notes)
                 ]:
                     schedule = []
                     for building, room, days, start, stop in zip(
-                        events_buildings,
-                        events_rooms,
+                        event_buildings, 
+                        event_rooms,
                         events_days,
-                        events_starts,
-                        events_stops,
+                        event_starts,
+                        event_stops
                     ):
                         match building, room:
-                            case Tag(name="a", text=abbr), _:
-                                building = Building(abbreviation=abbr)
-                                room = normalize(room).split("\n")[0]
                             case "NO", "ROOM":
                                 building = room = None
-                            case Tag(name="br"), Tag(name="br"): # skip line breaks
+                            case Tag(name="br"), Tag(name="br"):
                                 continue
-                            case _:
-                                raise ValueError("Invalid building or room")
-                        days = [Weekday[day] for day in days.split(",")]
+                            case str(), str():
+                                building = Building(abbreviation=normalize(building))
+                                room = normalize(room)
+                        days = [Weekday[day] for day in normalize(days).split(",")]
                         start = datetime.strptime(normalize(start), "%I:%M%p").time()
                         stop = datetime.strptime(normalize(stop), "%I:%M%p").time()
                         schedule += [
@@ -106,7 +81,7 @@ class AllSched(Module):
                                 room=room,
                                 day=day,
                                 start=start,
-                                stop=stop,
+                                stop=stop
                             ) for day in days
                         ]
                     result[semester].append(
@@ -123,7 +98,16 @@ class AllSched(Module):
                             notes=normalize(notes),
                         )
                     )
-                case [Tag(name="td", text="no\xa0reg\xa0activity"), *_]:
+                case [
+                    Tag(
+                        name="td",
+                        contents=[
+                            Tag(name="b", text="Total\xa0Credits") | Tag(name="hr"),
+                            *_
+                        ]
+                    ) | Tag(name="td", text="no\xa0reg\xa0activity"),
+                    *_
+                ]:
                     continue
                 case _:
                     raise ValueError("Invalid tr")
