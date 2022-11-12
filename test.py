@@ -7,6 +7,8 @@ import os
 import studentlink
 from studentlink.modules.allsched import AllSched
 from studentlink.modules.regsched import RegSched
+from studentlink.modules.browse_schedule import BrowseSchedule
+from studentlink.util import Semester
 import logging
 
 load_dotenv()
@@ -16,9 +18,11 @@ USERNAME, PASSWORD = os.environ["USERNAME"], os.environ["PASSWORD"]
 
 async def main():
     async with studentlink.StudentLinkAuth(USERNAME, PASSWORD) as sl:
-        reg = sl.module(RegSched)
+        browse = sl.module(BrowseSchedule)
         while True:
-            s = await reg.get_schedule()
+            s = await browse.search_class(
+                Semester.SPRING, 2023, "CAS", "CS", "111", "a1"
+            )
             print(s)
 
 

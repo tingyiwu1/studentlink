@@ -22,8 +22,8 @@ class Module(ABC):
             ModuleName=module
         )
 
-    async def get_page(self) -> str:
-        r = await self.client.session.get(Module.mod_url(self.MODULE_NAME))
+    async def get_page(self, *, params: dict[str, str] = None) -> str:
+        r = await self.client.session.get(Module.mod_url(self.MODULE_NAME), params=params)
         return await r.text()
 
 
