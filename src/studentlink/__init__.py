@@ -17,6 +17,7 @@ class StudentLink:
     ):
         self.session = session or aiohttp.ClientSession()
         self.logger = logger or logging.getLogger(__name__)
+        self.modules: dict[type, Module] = {}
 
     async def __aenter__(self):
         await self.session.__aenter__()
@@ -31,8 +32,9 @@ class StudentLink:
             raise TypeError(
                 f"{module} requires authentication; use StudentLinkAuth instead"
             )
-        return module(self)
-
+        if module not in self.modules:
+            self.modules[module] = module(self)
+        return self.modules[module]
 
 class StudentLinkAuth(StudentLink):
     def __init__(
@@ -119,7 +121,9 @@ class StudentLinkAuth(StudentLink):
         return self
 
     def module(self, module: Callable[..., M]) -> M:
-        return module(self)
+        if module not in self.modules:
+            self.modules[module] = module(self)
+        return self.modules[module]
 
 
 # f5_cspm=1234
