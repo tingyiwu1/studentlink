@@ -120,3 +120,24 @@ class StudentLinkAuth(StudentLink):
 
     def module(self, module: Callable[..., M]) -> M:
         return module(self)
+
+
+# f5_cspm=1234
+# f5avraaaaaaaaaaaaaaaa_session_=MHHIJFHAKDFEFLBHPHGJPLJAGIFALCLLCPBFMLOEGDKDEGEJBCHKJDAIAFLNBAFMMACDINODIGGGAANCOGKALCHCOCFAKPGHIOGEJFIPIDCNJHLFAILKMMCMBOKCOPPM
+# f5_cspm=1234
+# apt.uid=AP-PQQY5YJEHTTA-2-1665715175793-61755484.0.2.7b898736-1246-467f-8f47-980d7da7bb53
+# uiscgi_prod=4448694e9ea88bbf9c349d45e392080f:prod
+# BIGipServerist-uiscgi-app-prod-443-pool=1237697920.47873.0000
+# BIGipServerist-uiscgi-content-prod-443-pool=2332485386.47873.0000
+# _ga=GA1.1.945435981.1665715180
+# _ga_L4SD8HKLDR=GS1.1.1668186144.5.0.1668186144.0.0.0
+# BIGipServerist-uiscgi-app-prod-80-pool=1254475136.20480.0000
+# BIGipServerist-web-legacy-prod-80-pool=1662710026.31745.0000
+# BIGipServerist-wp-app-prod-443-pool=1860301066.47873.0000
+# BIGipServerist-wp-app-prod-80-pool=1843523850.20480.0000
+# BIGipServerist-web-phpbin-aws-prod-443-pool=1529494026.47873.0000
+# BIGipServerwww-prod-crc-443-pool=893985549.47873.0000
+# BIGipServerwww-prod-crc-80-pool=893985549.20480.0000
+# BIGipServerist-web-legacy-prod-443-pool=1662710026.31745.0000
+# AWSALB=3YyfEn1jbxLfI5v5e3v7XVHvay4E0b7hjzVyqJ8KenMP/YNH0qL+4MT4XZkpEMmQjBi1F0u4RAatvPLGdHnwRlkUPExhYyl+PeOQJcoKTdy/jBlzwySQoP7gyQuj
+# AWSALBCORS=3YyfEn1jbxLfI5v5e3v7XVHvay4E0b7hjzVyqJ8KenMP/YNH0qL+4MT4XZkpEMmQjBi1F0u4RAatvPLGdHnwRlkUPExhYyl+PeOQJcoKTdy/jBlzwySQoP7gyQuj

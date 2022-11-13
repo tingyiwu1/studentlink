@@ -29,7 +29,7 @@ class ClassView(View):
     abbreviation: str
     semester: str = None
     can_register: bool = None
-    reg_id: int = None
+    reg_id: str = None
     open_seats: int = None
     status: str = None
     cr_hrs: str = None

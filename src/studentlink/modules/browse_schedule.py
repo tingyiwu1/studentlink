@@ -16,19 +16,18 @@ class BrowseSchedule(Module):
         year: int,
         college: str,
         department: str = None,
-        course_number: str = None,
+        course: int | str = None,
         section: str = None,
     ):
-        page = await self.get_page(
-            params={
-                "SearchOptionCd": "S",
-                "KeySem": sem_key(semester, year),
-                "College": college,
-                "Dept": department,
-                "Course": course_number,
-                "Section": section,
-            }
-        )
+        params = {
+            "SearchOptionCd": "S",
+            "KeySem": sem_key(semester, year),
+            "College": college,
+        }
+        for k, v in zip(("Dept", "Course", "Section"), (department, course, section)):
+            if v is not None:
+                params[k] = v
+        page = await self.get_page(params=params)
         if "No classes found for specified search criteria" in page:
             return None
         if "Semester must be in format YYYYS" in page:
@@ -69,7 +68,6 @@ class BrowseSchedule(Module):
                 ]:
                     match selector:
                         case Tag(name="input", attrs={"value": reg_id}):
-                            reg_id = int(reg_id)
                             can_register = True
                         case Tag(name="a"):
                             reg_id = None

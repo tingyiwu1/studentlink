@@ -8,6 +8,7 @@ import studentlink
 from studentlink.modules.allsched import AllSched
 from studentlink.modules.regsched import RegSched
 from studentlink.modules.browse_schedule import BrowseSchedule
+from studentlink.modules.add_planner import AddPlanner
 from studentlink.util import Semester
 import logging
 
@@ -16,14 +17,17 @@ logging.basicConfig(level=logging.INFO)
 
 USERNAME, PASSWORD = os.environ["USERNAME"], os.environ["PASSWORD"]
 
+
 async def main():
     async with studentlink.StudentLinkAuth(USERNAME, PASSWORD) as sl:
-        browse = sl.module(BrowseSchedule)
+        mod = sl.module(AddPlanner)
         while True:
-            s = await browse.search_class(
-                Semester.SPRING, 2023, "CAS", "CS", "111", "a1"
-            )
+            s = await mod.add_to_planner(Semester.SPRING, 2023, "0001129029")
             print(s)
+            break
+        # mod2 = sl.module(BrowseSchedule)
+        # s2 = await mod2.search_class(Semester.SPRING, 2023, "CAS", "PO", 396)
+        # print(s2)
 
 
 async def mainn():
