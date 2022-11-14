@@ -17,7 +17,7 @@ class BrowseSchedule(Module):
         department: str = None,
         course: int | str = None,
         section: str = None,
-    ):
+    ) -> list[ClassView]:
         params = {
             "SearchOptionCd": "S",
             "KeySem": semester,
@@ -28,7 +28,7 @@ class BrowseSchedule(Module):
                 params[k] = v
         page = await self.get_page(params=params)
         if "No classes found for specified search criteria" in page:
-            return None
+            return []
         if "Semester must be in format YYYYS" in page:
             raise ValueError("Invalid semester")
         soup = BeautifulSoup(page, "html5lib")

@@ -33,3 +33,6 @@ class RegModule(Module, ABC):
         if not semester in ro.loaded_sems:
             await ro.load_semester(semester)
         return await super().get_page(params={"KeySem": semester} | (params or {}))
+
+class UnavailableOptionError(Exception):
+    pass
