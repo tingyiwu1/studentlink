@@ -11,6 +11,9 @@ from .modules._module import Module, PublicModule
 M = TypeVar("M", bound=Module)
 PM = TypeVar("PM", bound=PublicModule)
 
+class LoginError(Exception):
+    pass
+
 class StudentLink:
     def __init__(
         self, session: aiohttp.ClientSession = None, logger: logging.Logger = None
@@ -36,6 +39,16 @@ class StudentLink:
             self.modules[module] = module(self)
         return self.modules[module]
 
+    async def get_page(self, url, *, params: dict[str, str] = None) -> str:
+        r = await self.session.get(url, params=params)
+        t = await r.text()
+        if "<title>Boston University | Login</title>" in t:
+            raise TypeError(
+                f"This page requires authentication; use StudentLinkAuth instead"
+            )
+        return t
+
+
 class StudentLinkAuth(StudentLink):
     def __init__(
         self,
@@ -50,6 +63,30 @@ class StudentLinkAuth(StudentLink):
 
     async def __aenter__(self):
         await super().__aenter__()
+        for _ in range(3):
+            try:
+                await self.login()
+                break
+            except LoginError:
+                continue
+        else:
+            raise RuntimeError("failed to log in")
+        return self
+
+    async def get_page(self, url, *, params: dict[str, str] = None) -> str:
+        for _ in range(3):
+            r = await self.session.get(url, params=params)
+            t = await r.text()
+            if "<title>Boston University | Login</title>" in t:
+                try:
+                    await self.login()
+                except LoginError:
+                    continue
+            else:
+                return t
+        raise RuntimeError("failed to log in")
+
+    async def login(self):
         r1 = await self.session.get(Module.mod_url("allsched.pl"))
         execution = r1.url.query["execution"]
         self.logger.info("logging in")
@@ -97,7 +134,10 @@ class StudentLinkAuth(StudentLink):
             "https://api-c6b0c057.duosecurity.com/frame/status",
             data={"sid": sid, "txid": txid},
         )
-        result_url = (await r6.json())["response"]["result_url"]
+        response = (await r6.json())["response"]
+        result_url = response.get("result_url")
+        if not result_url:
+            raise LoginError(response)
         r7 = await self.session.post(
             f"https://api-c6b0c057.duosecurity.com{result_url}", data={"sid": sid}
         )
@@ -118,7 +158,6 @@ class StudentLinkAuth(StudentLink):
             },
         )
         logging.info("logged in")
-        return self
 
     def module(self, module: Callable[..., M]) -> M:
         if module not in self.modules:
