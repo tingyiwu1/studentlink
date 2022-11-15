@@ -2,6 +2,7 @@ import unicodedata
 from functools import partial
 from enum import IntEnum
 from dataclasses import dataclass
+import re
 
 
 class Sem(IntEnum):
@@ -37,6 +38,22 @@ class Semester(int):
     @property
     def semester(self) -> Sem:
         return Sem(self % 10)
+
+
+class Abbr(str):
+    def __new__(cls, text: str):
+        if not (
+            match := re.match(
+                r"^([A-Z]{3}) ?([A-Z]{2}) ?(\d{3}) ?([A-Z]\d)$", text.upper()
+            )
+        ):
+            raise ValueError(f"Invalid abbreviation: {text}")
+        return super().__new__(cls, "{} {}{} {}".format(*match.groups()))
+
+    def __iter__(self):
+        yield from re.match(
+            r"^([A-Z]{3}) ?([A-Z]{2}) ?(\d{3}) ?([A-Z]\d)$", self
+        ).groups()
 
 
 def normalize(text: str) -> str:

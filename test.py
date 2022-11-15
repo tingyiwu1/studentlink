@@ -8,7 +8,7 @@ import studentlink
 from studentlink.modules.allsched import AllSched
 from studentlink.modules.regsched import RegSched
 from studentlink.modules.browse_schedule import BrowseSchedule
-from studentlink.modules.reg import AddPlanner, Plan, ConfirmClasses
+from studentlink.modules.reg import AddPlanner, Plan, ConfirmClasses, Drop
 from studentlink.util import Semester
 import logging
 
@@ -20,10 +20,12 @@ USERNAME, PASSWORD = os.environ["USERNAME"], os.environ["PASSWORD"]
 
 async def main():
     async with studentlink.StudentLinkAuth(USERNAME, PASSWORD) as sl:
+        semester = Semester.from_str('spring 2023')
         while True:
             # s = await mod.add_to_planner(Semester.from_str('spring 2023'), "0001129029")
             # s = await mod.get_planner(Semester.from_str('spring 2023'))
-            s = await sl.module(ConfirmClasses).confirm_class(Semester.from_str('spring 2023'), "0001129029")
+            # s = await sl.module(ConfirmClasses).confirm_class(Semester.from_str('spring 2023'), "0001129029")
+            s = await sl.module(Drop).get_drop_list(semester)
             print(s)
             # break
         # mod2 = sl.module(BrowseSchedule)

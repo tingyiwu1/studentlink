@@ -30,6 +30,7 @@ class ClassView(View):
     semester: str = None
     can_register: bool = None
     reg_id: str = None
+    drop_id: str = None
     open_seats: int = None
     status: str = None
     cr_hrs: str = None
