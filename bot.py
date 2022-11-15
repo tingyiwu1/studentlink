@@ -6,9 +6,9 @@ import contextlib
 from io import StringIO
 import json
 
-from aiohttp import ClientSession
+from aiohttp import ClientSession, CookieJar
 
-from studentlink import StudentLinkAuth
+from studentlink import StudentLinkAuth, LoginError
 from studentlink.util import Semester, Abbr
 from studentlink.data.class_ import ClassView
 from studentlink.modules.browse_schedule import BrowseSchedule
@@ -20,7 +20,9 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger()
 
 fh = logging.FileHandler("bot.log", mode="a")
-formatter = logging.Formatter("%(asctime)s,%(msecs)d %(name)s %(levelname)s %(message)s")
+formatter = logging.Formatter(
+    "%(asctime)s,%(msecs)d %(name)s %(levelname)s %(message)s"
+)
 fh.setFormatter(formatter)
 fh.setLevel(logging.INFO)
 logger.addHandler(fh)
@@ -63,9 +65,7 @@ async def attempt_register(
             if res[cv.abbr][0]:
                 logger.info(f"Successfully registered for {cv.abbr}")
             else:
-                logger.info(
-                    f"Failed to register for {cv.abbr}: {res[cv.abbr][1]}"
-                )
+                logger.info(f"Failed to register for {cv.abbr}: {res[cv.abbr][1]}")
     else:
         logger.info(f"Cannot register for {abbr}")
 
@@ -102,6 +102,7 @@ async def attempt_replace(
 
 @contextlib.asynccontextmanager
 async def disc_log(session: ClientSession, name: str):
+    session = session or ClientSession()
     stream = StringIO()
     handler = logging.StreamHandler(stream)
     logger = logging.getLogger(name)
@@ -130,17 +131,13 @@ async def replace_class(
             logger.info(f"Successfully dropped {cv_d.abbr}")
             yield cv_d
         else:
-            raise CannotReplace(
-                f"Failed to drop {cv_d.abbr}: {res[cv_d.abbr][1]}"
-            )
+            raise CannotReplace(f"Failed to drop {cv_d.abbr}: {res[cv_d.abbr][1]}")
     finally:  # attempt to re-register original class so i don't get screwed over if something fails
         res = await sl.module(ConfirmClasses).confirm_class(SEMESTER, cv_r.reg_id)
         if res[cv_r.abbr][0]:
             logger.info(f"Successfully re-registered for {cv_r.abbr}")
         else:
-            logger.info(
-                f"Failed to re-register for {cv_r.abbr}: {res[cv_r.abbr][1]}"
-            )
+            logger.info(f"Failed to re-register for {cv_r.abbr}: {res[cv_r.abbr][1]}")
 
 
 @contextlib.asynccontextmanager
@@ -151,6 +148,7 @@ async def shift_section(
     logger: logging.Logger = logging.getLogger(),
 ):
     pass
+
 
 async def test_replace(sl: StudentLinkAuth, abbr: Abbr):
     try:
@@ -193,25 +191,39 @@ async def refresh_spec(
 
 
 async def poll():
-    async with StudentLinkAuth(USERNAME, PASSWORD) as sl:
-        spec = await refresh_spec(sl, [])
-        while True:
-            spec = await refresh_spec(sl, spec)
-            schedule = [
-                cv.abbr for cv in await sl.module(Drop).get_drop_list(SEMESTER)
-            ]
-            tasks = [
-                attempt_replace(sl, add=Abbr(s["add"]), replace=Abbr(s["replace"]))
-                if "replace" in s
-                else attempt_register(sl, Abbr(s["add"]))
-                for s in spec
-                if s.get("add") not in schedule
-            ]
-            try:
-                await asyncio.gather(*tasks)
-            except AttributeError as e:
-                logging.info(e)
-            await asyncio.sleep(5)
+    cookie_jar = CookieJar()
+    try:
+        cookie_jar.load("cookies.pickle")
+    except FileNotFoundError:
+        pass
+    print(cookie_jar)
+    try:
+        async with StudentLinkAuth(
+            USERNAME, PASSWORD, session=ClientSession(cookie_jar=cookie_jar)
+        ) as sl:
+            spec = await refresh_spec(sl, [])
+            while True:
+                spec = await refresh_spec(sl, spec)
+                schedule = [
+                    cv.abbr for cv in await sl.module(Drop).get_drop_list(SEMESTER)
+                ]
+                tasks = [
+                    attempt_replace(sl, add=Abbr(s["add"]), replace=Abbr(s["replace"]))
+                    if "replace" in s
+                    else attempt_register(sl, Abbr(s["add"]))
+                    for s in spec
+                    if s.get("add") not in schedule
+                ]
+                try:
+                    await asyncio.gather(*tasks)
+                except AttributeError as e:
+                    logging.info(e)
+                await asyncio.sleep(5)
+    except LoginError as e:
+        async with disc_log(None, "Login Error") as logger:
+            logger.error(e)
+    finally:
+        cookie_jar.save("cookies.pickle")
 
 
 if __name__ == "__main__":
