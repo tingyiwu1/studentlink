@@ -1,7 +1,7 @@
 from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime, time
-from studentlink.util import normalize
+from studentlink.util import normalize, Abbr
 from .vo import View
 from enum import IntEnum
 from bs4.element import Tag
@@ -26,7 +26,7 @@ class Weekday(IntEnum):
 
 @dataclass(frozen=True, kw_only=True)
 class ClassView(View):
-    abbreviation: str
+    abbr: Abbr
     semester: str = None
     can_register: bool = None
     reg_id: str = None

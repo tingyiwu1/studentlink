@@ -1,7 +1,7 @@
 from studentlink.modules.reg._reg_module import RegModule
 from bs4 import BeautifulSoup
 from bs4.element import Tag
-from studentlink.util import normalize, Semester
+from studentlink.util import normalize, Semester, Abbr
 from studentlink.data.class_ import ClassView, Weekday, Event, Building
 from datetime import datetime
 
@@ -26,7 +26,7 @@ class Drop(RegModule):
                     Tag(text=abbreviation),
                     Tag(text=status),
                     Tag(text=cr_hrs),
-                    Tag(contents=[title, Tag(name="br"), Tag(text=instructor) | str(instructor)]),
+                    Tag() as title_and_instructor,
                     Tag(text=type),
                     Tag(contents=[*events_buildings]),
                     Tag(contents=[*events_rooms]),
@@ -34,6 +34,11 @@ class Drop(RegModule):
                     Tag(contents=[*events_starts]),
                     Tag(contents=[*events_stops]),
                 ]:
+                    match title_and_instructor:
+                        case Tag(contents=[title, Tag(name="br"), Tag(text=instructor) | str(instructor)]):
+                            pass
+                        case Tag(contents=[title]):
+                            instructor = None
                     schedule = []
                     for building, room, days, start, stop in zip(
                         events_buildings,
@@ -65,7 +70,7 @@ class Drop(RegModule):
                         ]
                     result.append(
                         ClassView(
-                            abbreviation=normalize(abbreviation),
+                            abbr=Abbr(normalize(abbreviation)),
                             status=normalize(status),
                             cr_hrs=normalize(cr_hrs),
                             title=normalize(title),

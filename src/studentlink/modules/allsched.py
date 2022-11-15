@@ -1,7 +1,7 @@
 from ._module import Module
 from bs4 import BeautifulSoup
 import re
-from studentlink.util import normalize
+from studentlink.util import normalize, Abbr
 from studentlink.data.class_ import ClassView, Weekday, Event, Building
 from datetime import datetime
 from bs4.element import Tag
@@ -111,7 +111,7 @@ class AllSched(Module):
                         ]
                     result[semester].append(
                         ClassView(
-                            abbreviation=normalize(abbreviation),
+                            abbr=Abbr(normalize(abbreviation)),
                             semester=semester,
                             status=normalize(status),
                             cr_hrs=normalize(cr_hrs),

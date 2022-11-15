@@ -1,7 +1,7 @@
 from ._module import Module
 from bs4 import BeautifulSoup
 import re
-from studentlink.util import normalize, Semester
+from studentlink.util import normalize, Semester, Abbr
 from studentlink.data.class_ import ClassView, Weekday, Event, Building
 from datetime import datetime
 from bs4.element import Tag
@@ -46,13 +46,7 @@ class BrowseSchedule(Module):
                     ),
                     Tag(),
                     Tag(text=abbreviation),
-                    Tag(
-                        contents=[
-                            title,
-                            Tag(name="br"),
-                            Tag(text=instructor) | str(instructor),
-                        ]
-                    ),
+                    Tag() as title_and_instructor,
                     Tag() as topic,
                     Tag(text=open_seats),
                     Tag(text=cr_hrs),
@@ -75,6 +69,11 @@ class BrowseSchedule(Module):
                             pass
                         case Tag():
                             topic = None
+                    match title_and_instructor:
+                        case Tag(contents=[title, Tag(name="br"), instructor]):
+                            pass
+                        case Tag(contents=[title]):
+                            instructor = None
                     schedule = []
                     for building, room, days, start, stop in zip(
                         events_buildings,
@@ -106,7 +105,7 @@ class BrowseSchedule(Module):
                         ]
                     result.append(
                         ClassView(
-                            abbreviation=normalize(abbreviation),
+                            abbr=Abbr(normalize(abbreviation)),
                             title=normalize(title),
                             can_register=can_register,
                             reg_id=reg_id,
