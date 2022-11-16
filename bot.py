@@ -201,9 +201,9 @@ async def poll():
         async with StudentLinkAuth(
             USERNAME, PASSWORD, session=ClientSession(cookie_jar=cookie_jar)
         ) as sl:
+            spec = await refresh_spec(sl, [])
             async with disc_log(sl.session, "Start") as logger:
                 logger.info("Successfully logged in, starting...")
-            spec = await refresh_spec(sl, [])
             while True:
                 spec = await refresh_spec(sl, spec)
                 schedule = [
