@@ -58,7 +58,7 @@ async def attempt_register(
     sl: StudentLinkAuth, abbr: Abbr, logger: logging.Logger = logging.getLogger()
 ):
     cv = await get_class_reg(sl, abbr)
-    if cv is not None and cv.can_register:
+    if cv is not None and cv.reg_id:
         async with disc_log(sl.session, abbr) as logger:
             logger.info(f"Can register for {cv.abbr}")
             res = await sl.module(ConfirmClasses).confirm_class(SEMESTER, cv.reg_id)
@@ -79,7 +79,7 @@ async def attempt_replace(
 ):
     logger.info(f"Attempting to replace {replace} with {add}")
     cv1 = await get_class_reg(sl, add)
-    if cv1 is not None and cv1.can_register:
+    if cv1 is not None and cv1.reg_id:
         async with disc_log(sl.session, add) as logger:
             logger.info(f"Can register for {cv1.abbr}")
             try:
@@ -125,7 +125,7 @@ async def replace_class(
     cv_r, cv_d = await asyncio.gather(get_class_reg(sl, abbr), get_class_drop(sl, abbr))
     if cv_d is None or not cv_d.drop_id:
         raise CannotReplace(f"Cannot drop {abbr}")
-    if cv_r is None or not cv_r.can_register:
+    if cv_r is None or not cv_r.reg_id:
         raise CannotReplace(f"Cannot register for {abbr}")
     try:
         res = await sl.module(ConfirmDrop).confirm_drop(SEMESTER, cv_d.drop_id)

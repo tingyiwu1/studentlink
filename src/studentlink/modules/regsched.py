@@ -2,7 +2,7 @@ from ._module import Module
 from bs4 import BeautifulSoup
 import re
 from studentlink.util import normalize, Abbr, PageParseError
-from studentlink.data.class_ import ClassView, Weekday, Event, Building
+from studentlink.data.class_ import ScheduleClassView, Weekday, Event, Building
 from datetime import datetime
 from bs4.element import Tag
 
@@ -22,7 +22,7 @@ class RegSched(Module):
             )
         except AttributeError:
             raise PageParseError(f"Failed to parse regsched: {page}")
-        result: dict[str, list[ClassView]] = {}
+        result: dict[str, list[ScheduleClassView]] = {}
         semester = None
         for tr in data_rows:
             match tr.find_all("td"):
@@ -93,7 +93,7 @@ class RegSched(Module):
                             ) for day in days
                         ]
                     result[semester].append(
-                        ClassView(
+                        ScheduleClassView(
                             abbr=Abbr(normalize(abbreviation)),
                             semester=semester,
                             status=normalize(status),

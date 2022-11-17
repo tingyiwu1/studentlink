@@ -1,8 +1,9 @@
 from studentlink.modules.reg._reg_module import RegModule
+from dataclasses import dataclass
 from bs4 import BeautifulSoup
 from bs4.element import Tag
 from studentlink.util import normalize, Semester, Abbr, PageParseError
-from studentlink.data.class_ import ClassView, Weekday, Event, Building
+from studentlink.data.class_ import RegisteredClassView, Weekday, Event, Building
 from datetime import datetime
 
 
@@ -21,7 +22,7 @@ class Drop(RegModule):
             )
         except AttributeError:
             raise PageParseError(f"Failed to parse drop list: {page}")
-        result: list[ClassView] = []
+        result: list[DropClassView] = []
         for tr in data_rows:
             match tr.find_all("td", recursive=False):
                 case [
@@ -72,7 +73,7 @@ class Drop(RegModule):
                             for day in days
                         ]
                     result.append(
-                        ClassView(
+                        DropClassView(
                             abbr=Abbr(normalize(abbreviation)),
                             status=normalize(status),
                             cr_hrs=normalize(cr_hrs),
@@ -89,3 +90,7 @@ class Drop(RegModule):
                 case _:
                     raise PageParseError(f"Failed to parse drop list: {page}")
         return result
+
+@dataclass(frozen=True, kw_only=True)
+class DropClassView(RegisteredClassView):
+    drop_id: str = None

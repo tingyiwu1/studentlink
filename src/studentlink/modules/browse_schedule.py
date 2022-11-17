@@ -1,4 +1,5 @@
 from ._module import Module
+from dataclasses import dataclass
 from bs4 import BeautifulSoup
 import re
 from studentlink.util import normalize, Semester, Abbr, PageParseError
@@ -17,7 +18,7 @@ class BrowseSchedule(Module):
         department: str = None,
         course: int | str = None,
         section: str = None,
-    ) -> list[ClassView]:
+    ):
         params = {
             "SearchOptionCd": "S",
             "KeySem": semester,
@@ -39,7 +40,7 @@ class BrowseSchedule(Module):
             ).tbody.find_all("tr", recursive=False)
         except AttributeError:
             raise PageParseError(f"Failed to parse class browse page: {page}")
-        result = []
+        result: list[RegClassView] = []
         for tr in data_rows:
             match tr.find_all("td", recursive=False):
                 case [
@@ -63,10 +64,9 @@ class BrowseSchedule(Module):
                 ]:
                     match selector:
                         case Tag(name="input", attrs={"value": reg_id}):
-                            can_register = True
+                            pass
                         case Tag(name="a"):
                             reg_id = None
-                            can_register = False
                     match topic:
                         case Tag(text=topic):
                             pass
@@ -107,16 +107,16 @@ class BrowseSchedule(Module):
                             for day in days
                         ]
                     result.append(
-                        ClassView(
+                        RegClassView(
                             abbr=Abbr(normalize(abbreviation)),
                             title=normalize(title),
-                            can_register=can_register,
-                            reg_id=reg_id,
+                            reg_id=normalize(reg_id),
                             instructor=normalize(instructor),
                             open_seats=int(normalize(open_seats)),
                             cr_hrs=normalize(cr_hrs),
                             type=normalize(type),
                             schedule=schedule,
+                            topic=normalize(topic),
                             notes=normalize(notes),
                         )
                     )
@@ -125,3 +125,8 @@ class BrowseSchedule(Module):
                 case _:
                     raise PageParseError(f"Failed to parse class browse page: {page}")
         return result
+
+@dataclass(frozen=True, kw_only=True)
+class RegClassView(ClassView):
+    reg_id: str = None
+    open_seats: int = None

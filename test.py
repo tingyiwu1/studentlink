@@ -8,7 +8,7 @@ import studentlink
 from studentlink.modules.allsched import AllSched
 from studentlink.modules.regsched import RegSched
 from studentlink.modules.browse_schedule import BrowseSchedule
-from studentlink.modules.reg import AddPlanner, Plan, ConfirmClasses, Drop
+from studentlink.modules.reg import AddPlanner, Plan, ConfirmClasses, Drop, Section
 from studentlink.util import Semester
 import logging
 
@@ -19,13 +19,23 @@ USERNAME, PASSWORD = os.environ["USERNAME"], os.environ["PASSWORD"]
 
 
 async def main():
-    async with studentlink.StudentLinkAuth(USERNAME, PASSWORD) as sl:
-        semester = Semester.from_str('spring 2023')
+    cookie_jar = aiohttp.CookieJar()
+    try:
+        cookie_jar.load("cookies.pickle")
+    except FileNotFoundError:
+        pass
+    async with studentlink.StudentLinkAuth(
+        USERNAME, PASSWORD, session=aiohttp.ClientSession(cookie_jar=cookie_jar)
+    ) as sl:
+        semester = Semester.from_str("spring 2023")
         while True:
-            # s = await mod.add_to_planner(Semester.from_str('spring 2023'), "0001129029")
-            # s = await mod.get_planner(Semester.from_str('spring 2023'))
-            # s = await sl.module(ConfirmClasses).confirm_class(Semester.from_str('spring 2023'), "0001129029")
+            # s = await sl.module(AddPlanner).add_to_planner(semester, "0001129029")
+            # s = await sl.module(ConfirmClasses).confirm_class(semester, "0001129029")
+            s = await sl.module(Plan).get_planner(semester)
+            print(s)
             s = await sl.module(Drop).get_drop_list(semester)
+            print(s)
+            s = await sl.module(Section).get_section_change(semester)
             print(s)
             # break
         # mod2 = sl.module(BrowseSchedule)

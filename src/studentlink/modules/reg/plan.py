@@ -1,9 +1,11 @@
 from studentlink.modules.reg._reg_module import RegModule
+from dataclasses import dataclass
 from bs4 import BeautifulSoup
 from bs4.element import Tag
 from studentlink.util import normalize, Semester, Abbr, PageParseError
 from studentlink.data.class_ import ClassView, Weekday, Event, Building
 from datetime import datetime
+
 
 class Plan(RegModule):
     MODULE_NAME = "reg/plan/_start.pl"
@@ -20,7 +22,7 @@ class Plan(RegModule):
             )
         except AttributeError:
             raise PageParseError(f"Failed to parse planner: {page}")
-        result: list[ClassView] = []
+        result: list[PlannerClassView] = []
         for tr in data_rows:
             match tr.find_all("td", recursive=False):
                 case [
@@ -36,7 +38,7 @@ class Plan(RegModule):
                     Tag(contents=[*events_days]),
                     Tag(contents=[*events_starts]),
                     Tag(contents=[*events_stops]),
-                    Tag() as notes
+                    Tag() as notes,
                 ]:
                     match topic:
                         case Tag(text=topic):
@@ -44,7 +46,13 @@ class Plan(RegModule):
                         case Tag():
                             topic = None
                     match title_and_instructor:
-                        case Tag(contents=[title, Tag(name="br"), Tag(text=instructor) | str(instructor)]):
+                        case Tag(
+                            contents=[
+                                title,
+                                Tag(name="br"),
+                                Tag(text=instructor) | str(instructor),
+                            ]
+                        ):
                             pass
                         case Tag(contents=[title]):
                             instructor = None
@@ -78,7 +86,7 @@ class Plan(RegModule):
                             for day in days
                         ]
                     result.append(
-                        ClassView(
+                        PlannerClassView(
                             abbr=Abbr(normalize(abbreviation)),
                             title=normalize(title),
                             open_seats=int(normalize(open_seats)),
@@ -86,7 +94,8 @@ class Plan(RegModule):
                             instructor=normalize(instructor),
                             type=normalize(type),
                             schedule=schedule,
-                            notes=normalize(notes.get_text(separator='\n'))
+                            topic=normalize(topic),
+                            notes=normalize(notes.get_text(separator="\n")),
                         )
                     )
                 case [Tag(), *_]:
@@ -94,3 +103,7 @@ class Plan(RegModule):
                 case _:
                     raise PageParseError(f"Failed to parse planner: {page}")
         return result
+
+@dataclass(frozen=True, kw_only=True)
+class PlannerClassView(ClassView):
+    open_seats: int = None

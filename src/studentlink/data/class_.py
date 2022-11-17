@@ -27,12 +27,6 @@ class Weekday(IntEnum):
 @dataclass(frozen=True, kw_only=True)
 class ClassView(View):
     abbr: Abbr
-    semester: str = None
-    can_register: bool = None
-    reg_id: str = None
-    drop_id: str = None
-    open_seats: int = None
-    status: str = None
     cr_hrs: str = None
     title: str = None
     instructor: str = None
@@ -41,6 +35,14 @@ class ClassView(View):
     schedule: list[Event] = None
     notes: str = None
 
+@dataclass(frozen=True, kw_only=True)
+class RegisteredClassView(ClassView):
+    status: str = None
+
+
+@dataclass(frozen=True, kw_only=True)
+class ScheduleClassView(RegisteredClassView):
+    semester: str = None
 
 @dataclass(frozen=True, kw_only=True)
 class Event(View):
