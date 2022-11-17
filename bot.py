@@ -24,7 +24,7 @@ formatter = logging.Formatter(
     "%(asctime)s,%(msecs)d %(name)s %(levelname)s %(message)s"
 )
 fh.setFormatter(formatter)
-fh.setLevel(logging.INFO)
+fh.setLevel(logging.WARNING)
 logger.addHandler(fh)
 
 USERNAME, PASSWORD, DISC_URL = (
@@ -105,6 +105,7 @@ async def disc_log(session: ClientSession, name: str):
     session = session or ClientSession()
     stream = StringIO()
     handler = logging.StreamHandler(stream)
+    handler.setLevel(logging.INFO)
     logger = logging.getLogger(name)
     logger.addHandler(handler)
     try:
@@ -113,6 +114,7 @@ async def disc_log(session: ClientSession, name: str):
         await session.post(
             DISC_URL, data={"content": stream.getvalue(), "username": name}
         )
+        logger.removeHandler(handler)
 
 
 @contextlib.asynccontextmanager
