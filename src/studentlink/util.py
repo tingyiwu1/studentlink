@@ -4,6 +4,8 @@ from enum import IntEnum
 from dataclasses import dataclass
 import re
 
+class PageParseError(Exception):
+    pass
 
 class Sem(IntEnum):
     SUMMER1 = 1

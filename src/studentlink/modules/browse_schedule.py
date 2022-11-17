@@ -1,7 +1,7 @@
 from ._module import Module
 from bs4 import BeautifulSoup
 import re
-from studentlink.util import normalize, Semester, Abbr
+from studentlink.util import normalize, Semester, Abbr, PageParseError
 from studentlink.data.class_ import ClassView, Weekday, Event, Building
 from datetime import datetime
 from bs4.element import Tag
@@ -33,9 +33,12 @@ class BrowseSchedule(Module):
             raise ValueError("Invalid semester")
         soup = BeautifulSoup(page, "html5lib")
         data_rows: list[Tag]
-        _, *data_rows = soup.find(
-            name="form", attrs={"name": "SelectForm"}
-        ).tbody.find_all("tr", recursive=False)
+        try:
+            _, *data_rows = soup.find(
+                name="form", attrs={"name": "SelectForm"}
+            ).tbody.find_all("tr", recursive=False)
+        except AttributeError:
+            raise PageParseError(f"Failed to parse class browse page: {page}")
         result = []
         for tr in data_rows:
             match tr.find_all("td", recursive=False):
@@ -120,5 +123,5 @@ class BrowseSchedule(Module):
                 case [Tag(contents=[]), *_]:
                     continue
                 case _:
-                    raise ValueError("Invalid tr")
+                    raise PageParseError(f"Failed to parse class browse page: {page}")
         return result

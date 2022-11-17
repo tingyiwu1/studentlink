@@ -196,7 +196,6 @@ async def poll():
         cookie_jar.load("cookies.pickle")
     except FileNotFoundError:
         pass
-    print(cookie_jar)
     try:
         async with StudentLinkAuth(
             USERNAME, PASSWORD, session=ClientSession(cookie_jar=cookie_jar)

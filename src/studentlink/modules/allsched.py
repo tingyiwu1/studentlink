@@ -1,7 +1,7 @@
 from ._module import Module
 from bs4 import BeautifulSoup
 import re
-from studentlink.util import normalize, Abbr
+from studentlink.util import normalize, Abbr, PageParseError
 from studentlink.data.class_ import ClassView, Weekday, Event, Building
 from datetime import datetime
 from bs4.element import Tag
@@ -15,11 +15,14 @@ class AllSched(Module):
         soup = BeautifulSoup(page, "html5lib")
         # probably fails if there are no classes
         data_rows: list[Tag]
-        _, *data_rows = (
-            soup.find_all(string=re.compile(r"Spring|Summer|Fall|Winter"))[0]
-            .find_parent("table")
-            .find_all("tr")
-        )
+        try:
+            _, *data_rows = (
+                soup.find_all(string=re.compile(r"Spring|Summer|Fall|Winter"))[0]
+                .find_parent("table")
+                .find_all("tr")
+            )
+        except AttributeError:
+            raise PageParseError(f"Failed to parse allched: {page}")
         result: dict[str, list[ClassView]] = {}
         semester = None
         for tr in data_rows:
@@ -39,9 +42,9 @@ class AllSched(Module):
                 case [*rest]:
                     pass
                 case _:
-                    raise ValueError("Invalid tr")
+                    raise PageParseError(f"Invalid row: \n{tr}\nin page:\n{page}")
             if semester is None:
-                raise ValueError("tr does not start with td that specifies a semester")
+                raise PageParseError(f"tr does not start with td that specifies a semester: \n{tr}\n{page}")
             match rest:
                 case [
                     Tag(name="td", text=abbreviation),
@@ -96,7 +99,7 @@ class AllSched(Module):
                             case Tag(name="br"), Tag(name="br"): # skip line breaks
                                 continue
                             case _:
-                                raise ValueError("Invalid building or room")
+                                raise PageParseError(f"Invalid building or room: {building}, {room}\n{page}")
                         days = [Weekday[day] for day in days.split(",")]
                         start = datetime.strptime(normalize(start), "%I:%M%p").time()
                         stop = datetime.strptime(normalize(stop), "%I:%M%p").time()
@@ -126,5 +129,5 @@ class AllSched(Module):
                 case [Tag(name="td", text="no\xa0reg\xa0activity"), *_]:
                     continue
                 case _:
-                    raise ValueError("Invalid tr")
+                    raise PageParseError(f"Invalid row: \n{tr}\nin page:\n{page}")
         return result

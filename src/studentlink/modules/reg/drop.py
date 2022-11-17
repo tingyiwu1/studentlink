@@ -1,7 +1,7 @@
 from studentlink.modules.reg._reg_module import RegModule
 from bs4 import BeautifulSoup
 from bs4.element import Tag
-from studentlink.util import normalize, Semester, Abbr
+from studentlink.util import normalize, Semester, Abbr, PageParseError
 from studentlink.data.class_ import ClassView, Weekday, Event, Building
 from datetime import datetime
 
@@ -9,16 +9,19 @@ from datetime import datetime
 class Drop(RegModule):
     MODULE_NAME = "reg/drop/_start.pl"
 
-    async def get_drop_list(self, semester: Semester) -> list[ClassView]:
+    async def get_drop_list(self, semester: Semester):
         page = await self.get_page(semester)
         soup = BeautifulSoup(page, "html5lib")
         data_rows: list[Tag]
-        _, *data_rows = (
-            soup.find(name="form", attrs={"name": "SelectForm"})
-            .find_next("tbody")
-            .find_all("tr", recursive=False)
-        )
-        result = []
+        try: 
+            _, *data_rows = (
+                soup.find(name="form", attrs={"name": "SelectForm"})
+                .find_next("tbody")
+                .find_all("tr", recursive=False)
+            )
+        except AttributeError:
+            raise PageParseError(f"Failed to parse drop list: {page}")
+        result: list[ClassView] = []
         for tr in data_rows:
             match tr.find_all("td", recursive=False):
                 case [
@@ -84,5 +87,5 @@ class Drop(RegModule):
                 case [Tag(), *_]:
                     continue
                 case _:
-                    raise ValueError("Invalid tr")
+                    raise PageParseError(f"Failed to parse drop list: {page}")
         return result

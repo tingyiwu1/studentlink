@@ -2,7 +2,7 @@ from studentlink.modules.reg._reg_module import RegModule, UnavailableOptionErro
 from studentlink.util import Semester
 from bs4 import BeautifulSoup
 import re
-from studentlink.util import normalize, Semester
+from studentlink.util import normalize, Semester, PageParseError
 from studentlink.data.class_ import ClassView, Weekday, Event, Building
 from datetime import datetime
 from bs4.element import Tag
@@ -24,12 +24,15 @@ class ConfirmDrop(RegModule):
 
         soup = BeautifulSoup(page, "html5lib")
         data_rows: list[Tag]
-        _, *data_rows = (
-            soup.find("b", text="Semester:")
-            .find_next("table")
-            .tbody.find_all("tr", recursive=False)
-        )
-        result: dict[str, tuple(bool, str)] = {}
+        try:
+            _, *data_rows = (
+                soup.find("b", text="Semester:")
+                .find_next("table")
+                .tbody.find_all("tr", recursive=False)
+            )
+        except AttributeError:
+            raise PageParseError(f"Failed to parse drop confirmation: {page}")
+        result: dict[str, tuple[bool, str]] = {}
         for tr in data_rows:
             match tr.find_all("td", recursive=False):
                 case [
