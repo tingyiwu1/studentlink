@@ -79,10 +79,15 @@ class StudentLinkAuth(StudentLink):
                     await self.login(r)
                 except LoginError as e:
                     login_errors.append(e)
-                    logging.error(e)
                     continue
-            else:
-                return t
+            elif "Web Login Service - Stale Request" in t:  # untested
+                try:
+                    await self.login()
+                    return await self.get_page(url, params=params)
+                except LoginError as e:
+                    login_errors.append(e)
+                    continue
+            return t
         raise LoginError(login_errors or "unknown error")
 
     async def login(self, r: aiohttp.ClientResponse = None):
@@ -107,7 +112,7 @@ class StudentLinkAuth(StudentLink):
         elif "Two-Step Login Started" in t:
             r2 = r
         else:
-            raise LoginError(f"unknown login page: {t}")
+            raise LoginError(f"unknown login page: {r.url}\n{t}")
         t2 = await r2.text()
         if "you must press the Continue button once to proceed." in t2:
             t8 = t2
@@ -116,7 +121,7 @@ class StudentLinkAuth(StudentLink):
             try:
                 tx, app = matches2[0]
             except IndexError:
-                raise LoginError(f"couldn't find tx and app: {t2}")
+                raise LoginError(f"couldn't find tx and app: {r2.url}\n{t2}")
             r3 = await self.session.post(
                 URL(
                     "https://api-c6b0c057.duosecurity.com/frame/web/v1/auth"
@@ -142,14 +147,14 @@ class StudentLinkAuth(StudentLink):
                     duo_sig = html.unescape(duo_sig)
                     parent = html.unescape(parent)
                 except ValueError:
-                    raise LoginError(f"couldn't find duo_sig and parent: {t3}")
+                    raise LoginError(f"couldn't find duo_sig and parent: {r3.url}\n{t3}")
                 # logging.info("logged in with cookie")
             else:
                 sid = r3.url.query.get("sid")
                 if not sid:
                     raise LoginError(f"sid not found in {r3.url}")
 
-                logging.info("sending duo push")
+                self.logger.info("sending duo push")
                 r4 = await self.session.post(
                     "https://api-c6b0c057.duosecurity.com/frame/prompt",
                     data={
@@ -193,8 +198,8 @@ class StudentLinkAuth(StudentLink):
         matches8 = re.findall(r'input type="hidden" name="(.+?)" value="(.+?)"', t8)
         try:
             (_, relay_state), (_, SAMLResponse) = matches8
-        except ValueError as e:
-            raise LoginError(f"couldn't find relay_state and SAMLResponse: {t8}")
+        except ValueError:
+            raise LoginError(f"couldn't find relay_state and SAMLResponse: {r8.url}\n{t8}")
         await self.session.post(
             "https://linklogin.bu.edu/Shibboleth.sso/SAML2/POST",
             data={
@@ -202,7 +207,7 @@ class StudentLinkAuth(StudentLink):
                 "SAMLResponse": html.unescape(SAMLResponse),
             },
         )
-        logging.info("logged in")
+        self.logger.info("logged in")
 
     def module(self, module: Callable[..., M]) -> M:
         if module not in self.modules:
