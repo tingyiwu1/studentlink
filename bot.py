@@ -37,13 +37,21 @@ logging.basicConfig(handlers=[fh, sh, sh2], level=logging.DEBUG)
 USERNAME, PASSWORD, DISC_URL = (
     os.environ["USERNAME"],
     os.environ["PASSWORD"],
-    os.environ["DISC_URL"]
+    os.environ["DISC_URL"],
 )
 
 SEMESTER = Semester.from_str("Spring 2023")
 
 
 class CannotReplace(Exception):
+    pass
+
+
+class RegisterFail(Exception):
+    pass
+
+
+class CriticalError(Exception):
     pass
 
 
@@ -73,6 +81,7 @@ async def attempt_register(
                 logger.info(f"Successfully registered for {cv.abbr}")
             else:
                 logger.info(f"Failed to register for {cv.abbr}: {res[cv.abbr][1]}")
+                raise RegisterFail(f"Failed to register for {cv.abbr}: {res[cv.abbr][1]}")
     else:
         logger.info(f"Cannot register for {abbr}")
 
@@ -101,6 +110,7 @@ async def attempt_replace(
                         logger.info(
                             f"Failed to register for {cv1.abbr}: {res[cv1.abbr][1]}"
                         )
+                        raise RegisterFail(f"Failed to register for {cv1.abbr}: {res[cv1.abbr][1]}")
             except CannotReplace as e:
                 logger.warning(e)
     else:
@@ -127,12 +137,14 @@ async def disc_log(session: ClientSession, name: str):
 async def replace_class(
     sl: StudentLinkAuth, abbr: Abbr, logger: logging.Logger = logging.getLogger()
 ):
-    """context manager to drop a class to make room for another. MAKE SURE THEY OVERLAP"""
+    """context manager to drop a class to make room for another."""
     cv_r, cv_d = await asyncio.gather(get_class_reg(sl, abbr), get_class_drop(sl, abbr))
     if cv_d is None or not cv_d.drop_id:
         raise CannotReplace(f"Cannot drop {abbr}")
     if cv_r is None or not cv_r.reg_id:
-        raise CannotReplace(f"Cannot register for {abbr}")
+        raise CannotReplace(
+            f"Cannot register for {abbr}. Try manually dropping if you want to risk it."
+        )
     try:
         res = await sl.module(ConfirmDrop).confirm_drop(SEMESTER, cv_d.drop_id)
         if res[cv_d.abbr][0]:
@@ -140,12 +152,21 @@ async def replace_class(
             yield cv_d
         else:
             raise CannotReplace(f"Failed to drop {cv_d.abbr}: {res[cv_d.abbr][1]}")
-    finally:  # attempt to re-register original class so i don't get screwed over if something fails
-        res = await sl.module(ConfirmClasses).confirm_class(SEMESTER, cv_r.reg_id)
+    except Exception as e:  # replace class back if something goes wrong
+        logger.warning(f"Something went wrong, re-registering {cv_d.abbr}\n{e}")
+        try:
+            res = await sl.module(ConfirmClasses).confirm_class(SEMESTER, cv_r.reg_id)
+        except Exception as e:
+            raise CriticalError(f"Failed to re-register {cv_d.abbr}\n{e}")
         if res[cv_r.abbr][0]:
             logger.info(f"Successfully re-registered for {cv_r.abbr}")
         else:
             logger.info(f"Failed to re-register for {cv_r.abbr}: {res[cv_r.abbr][1]}")
+            raise CriticalError(
+                f"Failed to re-register for {cv_r.abbr}: {res[cv_r.abbr][1]}"
+            )
+    finally:
+        pass
 
 
 @contextlib.asynccontextmanager
@@ -231,7 +252,13 @@ async def poll():
                 try:
                     await asyncio.gather(*tasks)
                 except AttributeError as e:
-                    logging.info(e)
+                    logger.info(e)
+                except RegisterFail as e:
+                    async with disc_log(session, "Register Fail") as logger:
+                        logger.warning(e)
+                except CriticalError as e:
+                    async with disc_log(session, "Critical Error") as logger:
+                        logger.critical(e)
                 await asyncio.sleep(5)
     except LoginError as e:
         async with disc_log(session, "Login Error") as logger:
@@ -243,6 +270,7 @@ async def poll():
             logger.info("Stopped")
         cookie_jar.save("cookies.pickle")
         await session.close()
+
 
 if __name__ == "__main__":
     asyncio.run(poll())
