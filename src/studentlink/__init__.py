@@ -113,9 +113,10 @@ class StudentLinkAuth(StudentLink):
             r2 = r
         else:
             raise LoginError(f"unknown login page: {r.url}\n{t}")
+        r2: aiohttp.ClientResponse
         t2 = await r2.text()
         if "you must press the Continue button once to proceed." in t2:
-            t8 = t2
+            r8 = r2
         else:
             matches2 = re.findall(r"'sig_request': '(TX.+?):(APP.+?)'", t2)
             try:
@@ -135,9 +136,7 @@ class StudentLinkAuth(StudentLink):
                 )
             )
             t3 = await r3.text()
-            assert t3
-
-            if "Logging you in..." in t3:  #
+            if "Logging you in..." in t3:  # duo remembers user
                 matches3 = re.findall(
                     r'name="js_cookie" value="(.+)"[\S\s]+name="js_parent" value="(.+)"',
                     t3,
@@ -147,8 +146,9 @@ class StudentLinkAuth(StudentLink):
                     duo_sig = html.unescape(duo_sig)
                     parent = html.unescape(parent)
                 except ValueError:
-                    raise LoginError(f"couldn't find duo_sig and parent: {r3.url}\n{t3}")
-                # logging.info("logged in with cookie")
+                    raise LoginError(
+                        f"couldn't find duo_sig and parent: {r3.url}\n{t3}"
+                    )
             else:
                 sid = r3.url.query.get("sid")
                 if not sid:
@@ -194,12 +194,15 @@ class StudentLinkAuth(StudentLink):
                 parent[:-1] + "2",  # e1s1 -> e1s2
                 data={"_eventId": "proceed", "signedDuoResponse": f"{duo_sig}:{app}"},
             )
-            t8 = await r8.text()
+        r8: aiohttp.ClientResponse
+        t8 = await r8.text()
         matches8 = re.findall(r'input type="hidden" name="(.+?)" value="(.+?)"', t8)
         try:
             (_, relay_state), (_, SAMLResponse) = matches8
         except ValueError:
-            raise LoginError(f"couldn't find relay_state and SAMLResponse: {r8.url}\n{t8}")
+            raise LoginError(
+                f"couldn't find relay_state and SAMLResponse: {r8.url}\n{t8}"
+            )
         await self.session.post(
             "https://linklogin.bu.edu/Shibboleth.sso/SAML2/POST",
             data={
