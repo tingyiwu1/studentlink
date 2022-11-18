@@ -20,16 +20,20 @@ class StudentLink:
     def __init__(
         self, session: aiohttp.ClientSession = None, logger: logging.Logger = None
     ):
-        self.session = session or aiohttp.ClientSession()
+        self.session, self.owns_session = (
+            (session, False) if session else (aiohttp.ClientSession(), True)
+        )
         self.logger = logger or logging.getLogger(__name__)
         self.modules: dict[type, Module] = {}
 
     async def __aenter__(self):
-        await self.session.__aenter__()
+        if self.owns_session:
+            await self.session.__aenter__()
         return self
 
     async def __aexit__(self, *args):
-        await self.session.__aexit__(*args)
+        if self.owns_session:
+            await self.session.__aexit__(*args)
         self.session = None
 
     def module(self, module: Callable[[], PM]) -> PM:
@@ -64,10 +68,6 @@ class StudentLinkAuth(StudentLink):
         self.username = username
         self.password = password
         self.login_retries = login_retries
-
-    async def __aenter__(self):
-        await super().__aenter__()
-        return self
 
     async def get_page(self, url, *, params: dict[str, str] = None) -> str:
         login_errors = []
@@ -186,7 +186,7 @@ class StudentLinkAuth(StudentLink):
                 if not (duo_sig := response7.get("cookie")):
                     raise LoginError(f"couldn't find cookie in {response7}")
             r8 = await self.session.post(
-                parent[:-1] + "2", # e1s1 -> e1s2
+                parent[:-1] + "2",  # e1s1 -> e1s2
                 data={"_eventId": "proceed", "signedDuoResponse": f"{duo_sig}:{app}"},
             )
             t8 = await r8.text()

@@ -5,6 +5,7 @@ import os
 import contextlib
 from io import StringIO
 import json
+import sys
 
 from aiohttp import ClientSession, CookieJar
 
@@ -15,9 +16,6 @@ from studentlink.modules.browse_schedule import BrowseSchedule
 from studentlink.modules.reg import ConfirmClasses, Drop, ConfirmDrop
 
 load_dotenv()
-logging.basicConfig(level=logging.INFO)
-
-logger = logging.getLogger()
 
 fh = logging.FileHandler("bot.log", mode="a")
 formatter = logging.Formatter(
@@ -25,12 +23,21 @@ formatter = logging.Formatter(
 )
 fh.setFormatter(formatter)
 fh.setLevel(logging.WARNING)
-logger.addHandler(fh)
+
+sh = logging.StreamHandler(sys.stdout)
+sh.setFormatter(logging.Formatter(logging.BASIC_FORMAT))
+sh.setLevel(logging.INFO)
+
+sh2 = logging.StreamHandler(sys.stderr)
+sh2.setFormatter(logging.Formatter(logging.BASIC_FORMAT))
+sh2.setLevel(logging.ERROR)
+
+logging.basicConfig(handlers=[fh, sh, sh2], level=logging.DEBUG)
 
 USERNAME, PASSWORD, DISC_URL = (
     os.environ["USERNAME"],
     os.environ["PASSWORD"],
-    os.environ["DISC_URL"],
+    os.environ["DISC_URL"]
 )
 
 SEMESTER = Semester.from_str("Spring 2023")
@@ -102,7 +109,6 @@ async def attempt_replace(
 
 @contextlib.asynccontextmanager
 async def disc_log(session: ClientSession, name: str):
-    session = session or ClientSession()
     stream = StringIO()
     handler = logging.StreamHandler(stream)
     handler.setLevel(logging.INFO)
@@ -198,12 +204,17 @@ async def poll():
         cookie_jar.load("cookies.pickle")
     except FileNotFoundError:
         pass
+    session = ClientSession(cookie_jar=cookie_jar)
+    logger = logging.getLogger()
     try:
         async with StudentLinkAuth(
-            USERNAME, PASSWORD, session=ClientSession(cookie_jar=cookie_jar)
+            USERNAME,
+            PASSWORD,
+            session=session,
+            logger=logger,
         ) as sl:
             spec = await refresh_spec(sl, [])
-            async with disc_log(sl.session, "Start") as logger:
+            async with disc_log(session, "Start") as logger:
                 logger.info("Successfully logged in, starting...")
             while True:
                 spec = await refresh_spec(sl, spec)
@@ -223,13 +234,15 @@ async def poll():
                     logging.info(e)
                 await asyncio.sleep(5)
     except LoginError as e:
-        async with disc_log(None, "Login Error") as logger:
+        async with disc_log(session, "Login Error") as logger:
             logger.error(e)
+    except Exception as e:
+        logger.error(e)
     finally:
-        async with disc_log(None, "Stopped") as logger:
+        async with disc_log(session, "Stopped") as logger:
             logger.info("Stopped")
         cookie_jar.save("cookies.pickle")
-
+        await session.close()
 
 if __name__ == "__main__":
     asyncio.run(poll())
