@@ -77,6 +77,7 @@ class StudentLinkAuth(StudentLink):
             if "<title>Boston University | Login</title>" in t:
                 try:
                     await self.login(r)
+                    continue
                 except LoginError as e:
                     login_errors.append(e)
                     continue
