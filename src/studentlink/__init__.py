@@ -84,7 +84,7 @@ class StudentLinkAuth(StudentLink):
             elif "Web Login Service - Stale Request" in t:  # untested
                 try:
                     await self.login()
-                    return await self.get_page(url, params=params)
+                    continue
                 except LoginError as e:
                     login_errors.append(e)
                     continue
