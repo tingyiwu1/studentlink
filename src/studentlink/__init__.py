@@ -15,6 +15,8 @@ PM = TypeVar("PM", bound=PublicModule)
 class LoginError(Exception):
     pass
 
+class ConnectionError(Exception):
+    pass
 
 class StudentLink:
     def __init__(
@@ -52,6 +54,8 @@ class StudentLink:
             raise TypeError(
                 f"This page requires authentication; use StudentLinkAuth instead"
             )
+        if "not available: Connection refused" in t:
+            raise ConnectionError("Connection refused")
         return t
 
 
@@ -74,6 +78,8 @@ class StudentLinkAuth(StudentLink):
         for _ in range(self.login_retries):
             r = await self.session.get(url, params=params)
             t = await r.text()
+            if "not available: Connection refused" in t:
+                raise ConnectionError("Connection refused")
             if "<title>Boston University | Login</title>" in t:
                 try:
                     await self.login(r)

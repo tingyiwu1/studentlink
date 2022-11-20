@@ -9,7 +9,7 @@ import sys
 
 from aiohttp import ClientSession, CookieJar
 
-from studentlink import StudentLinkAuth, LoginError
+from studentlink import StudentLinkAuth, LoginError, ConnectionError
 from studentlink.util import Semester, Abbr
 from studentlink.data.class_ import ClassView
 from studentlink.modules.browse_schedule import BrowseSchedule
@@ -220,6 +220,7 @@ async def refresh_spec(
 
 
 async def poll():
+    delay_stop = False
     cookie_jar = CookieJar()
     try:
         cookie_jar.load("cookies.pickle")
@@ -263,13 +264,23 @@ async def poll():
     except LoginError as e:
         async with disc_log(session, "Login Error") as logger:
             logger.error(e)
+    except ConnectionError as e:
+        delay_stop = True
     except Exception as e:
         logger.error(e)
     finally:
-        async with disc_log(session, "Stopped") as logger:
-            logger.info("Stopped")
-        cookie_jar.save("cookies.pickle")
-        await session.close()
+        if delay_stop:
+            async with disc_log(session, "Connection Error") as logger:
+                logger.error("Connection error, waiting 5 minutes before retrying")
+            cookie_jar.save("cookies.pickle")
+            await session.close()
+            await asyncio.sleep(300)
+        else:
+            async with disc_log(session, "Stopped") as logger:
+                logger.info("Stopped")
+            cookie_jar.save("cookies.pickle")
+            await session.close()
+        
 
 
 if __name__ == "__main__":
