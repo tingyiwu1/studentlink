@@ -271,10 +271,10 @@ async def poll():
     finally:
         if delay_stop:
             async with disc_log(session, "Connection Error") as logger:
-                logger.error("Connection error, waiting 5 minutes before retrying")
+                logger.error("Connection error, waiting 10 minutes before retrying")
             cookie_jar.save("cookies.pickle")
             await session.close()
-            await asyncio.sleep(300)
+            await asyncio.sleep(600)
         else:
             async with disc_log(session, "Stopped") as logger:
                 logger.info("Stopped")
