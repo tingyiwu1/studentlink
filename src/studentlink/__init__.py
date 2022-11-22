@@ -18,6 +18,9 @@ class LoginError(Exception):
 class ConnectionError(Exception):
     pass
 
+class InternalError(Exception):
+    pass
+
 class StudentLink:
     def __init__(
         self, session: aiohttp.ClientSession = None, logger: logging.Logger = None
@@ -56,6 +59,8 @@ class StudentLink:
             )
         if "not available: Connection refused" in t:
             raise ConnectionError("Connection refused")
+        if "<title>Error &middot; Boston University</title>" in t:
+                raise InternalError(f'{r.url}\n{t}')
         return t
 
 
@@ -80,6 +85,8 @@ class StudentLinkAuth(StudentLink):
             t = await r.text()
             if "not available: Connection refused" in t:
                 raise ConnectionError("Connection refused")
+            if "<title>Error &middot; Boston University</title>" in t:
+                raise InternalError(f'{r.url}\n{t}')
             if "<title>Boston University | Login</title>" in t:
                 try:
                     await self.login(r)

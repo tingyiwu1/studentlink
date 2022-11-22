@@ -9,7 +9,7 @@ import sys
 
 from aiohttp import ClientSession, CookieJar
 
-from studentlink import StudentLinkAuth, LoginError, ConnectionError
+from studentlink import StudentLinkAuth, LoginError, ConnectionError, InternalError
 from studentlink.util import Semester, Abbr
 from studentlink.data.class_ import ClassView
 from studentlink.modules.browse_schedule import BrowseSchedule
@@ -253,7 +253,9 @@ async def poll():
                 try:
                     await asyncio.gather(*tasks)
                 except AttributeError as e:
-                    logger.info(e)
+                    logger.warning(e)
+                except InternalError as e:
+                    logger.warning(e)
                 except RegisterFail as e:
                     async with disc_log(session, "Register Fail") as logger:
                         logger.warning(e)
