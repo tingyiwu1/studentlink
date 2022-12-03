@@ -257,8 +257,9 @@ async def poll():
                 except InternalError as e:
                     logger.warning(e)
                 except RegisterFail as e:
-                    async with disc_log(session, "Register Fail") as logger:
-                        logger.warning(e)
+                    pass
+                    # async with disc_log(session, "Register Fail") as logger:
+                    #     logger.warning(e)
                 except CriticalError as e:
                     async with disc_log(session, "Critical Error") as logger:
                         logger.critical(e)
