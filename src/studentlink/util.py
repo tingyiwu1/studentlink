@@ -3,6 +3,9 @@ from functools import partial
 from enum import IntEnum
 from dataclasses import dataclass
 import re
+import time
+import asyncio
+from pprint import pprint
 
 class PageParseError(Exception):
     pass
@@ -62,3 +65,17 @@ def normalize(text: str) -> str:
     if not isinstance(text, str):
         return None
     return unicodedata.normalize("NFKD", text).strip()
+
+def async_ttl_cache(ttl_seconds: int, cache: dict = None):
+    def decorator(func):
+        _cache = {} if cache is None else cache
+        async def wrapper(*args, **kwargs):
+            key = (args, tuple(kwargs.items()))
+            if key in _cache and time.time() - _cache[key][1] < ttl_seconds:
+                result = _cache[key][0]
+            else:
+                result = asyncio.create_task(func(*args, **kwargs))
+                _cache[key] = (result, time.time())
+            return await result
+        return wrapper
+    return decorator

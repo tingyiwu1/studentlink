@@ -9,6 +9,7 @@ from studentlink.modules.allsched import AllSched
 from studentlink.modules.regsched import RegSched
 from studentlink.modules.browse_schedule import BrowseSchedule
 from studentlink.modules.reg import AddPlanner, Plan, ConfirmClasses, Drop, Section
+from studentlink.modules.bldg import Bldg
 from studentlink.util import Semester
 import logging
 
@@ -31,12 +32,14 @@ async def main():
         while True:
             # s = await sl.module(AddPlanner).add_to_planner(semester, "0001129029")
             # s = await sl.module(ConfirmClasses).confirm_class(semester, "0001129029")
-            s = await sl.module(Plan).get_planner(semester)
+            s = await sl.module(Bldg).get_building("CAS")
             print(s)
-            s = await sl.module(Drop).get_drop_list(semester)
+            s = await sl.module(AllSched).get_schedule(True)
             print(s)
-            s = await sl.module(Section).get_section_change(semester)
-            print(s)
+            # s = await sl.module(Drop).get_drop_list(semester)
+            # print(s)
+            # s = await sl.module(Section).get_section_change(semester)
+            # print(s)
             # break
         # mod2 = sl.module(BrowseSchedule)
         # s2 = await mod2.search_class(Semester.SPRING, 2023, "CAS", "PO", 396)
