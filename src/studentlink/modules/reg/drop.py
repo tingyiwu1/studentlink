@@ -1,4 +1,4 @@
-from studentlink.modules.reg._reg_module import RegModule
+from studentlink.modules.reg._reg_module import RegModule, UnavailableOptionError
 from dataclasses import dataclass
 from bs4 import BeautifulSoup
 from bs4.element import Tag
@@ -12,6 +12,8 @@ class Drop(RegModule):
 
     async def get_drop_list(self, semester: Semester):
         page = await self.get_page(semester)
+        if "You requested a registration option not available for the semester." in page:
+            raise UnavailableOptionError("You requested a registration option not available for the semester.")
         soup = BeautifulSoup(page, "html5lib")
         data_rows: list[Tag]
         try: 

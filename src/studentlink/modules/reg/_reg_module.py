@@ -16,21 +16,17 @@ class RegOptions(Module):
 
     def __init__(self, client: StudentLink):
         super().__init__(client)
-        self.loaded_sems = set()
 
     @async_ttl_cache(REFRESH_EVERY_SECONDS, cache=cache)
     async def load_semester(self, semester: Semester):
         page = await self.get_page(params={"KeySem": semester})
-        print("loaded", semester)
         return page
-
 
 class RegModule(Module, ABC):
     MODULE_NAME = None
 
     def __init__(self, client: StudentLink):
         super().__init__(client)
-        client.module(RegOptions)
 
     async def get_page(
         self, semester: Semester, *, params: dict[str, str] = None

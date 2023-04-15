@@ -18,6 +18,7 @@ class BrowseSchedule(Module):
         department: str = None,
         course: int | str = None,
         section: str = None,
+        include_next_query: bool = False,
     ):
         params = {
             "SearchOptionCd": "S",
@@ -28,6 +29,15 @@ class BrowseSchedule(Module):
             if v is not None:
                 params[k] = v
         page = await self.get_page(params=params)
+        if include_next_query:
+            next_query = re.findall(r'<INPUT.*NAME="College".*VALUE="([A-Z]{3})".*onFocus="ClearCollege\(\);">', page) + \
+                re.findall(r'<INPUT.*NAME="Dept".*VALUE="([A-Z]{2})".*>', page) + \
+                re.findall(r'<INPUT.*NAME="Course".*VALUE="(\d+)".*>', page) + \
+                re.findall(r'<INPUT.*NAME="Section".*VALUE="([A-Z\d]+)".*>', page)
+            return self.parse_class_list(page), next_query or None
+        return self.parse_class_list(page)
+
+    def parse_class_list(self, page: str):
         if "No classes found for specified search criteria" in page:
             return []
         if "Semester must be in format YYYYS" in page:
@@ -125,6 +135,7 @@ class BrowseSchedule(Module):
                 case _:
                     raise PageParseError(f"Failed to parse class browse page: {page}")
         return result
+
 
 @dataclass(frozen=True, kw_only=True)
 class RegClassView(ClassView):

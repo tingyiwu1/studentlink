@@ -8,7 +8,7 @@ import studentlink
 from studentlink.modules.allsched import AllSched
 from studentlink.modules.regsched import RegSched
 from studentlink.modules.browse_schedule import BrowseSchedule
-from studentlink.modules.reg import AddPlanner, Plan, ConfirmClasses, Drop, Section
+from studentlink.modules.reg import AddPlanner, Plan, ConfirmClasses, Drop, Section, RegOptions, Add
 from studentlink.modules.bldg import Bldg
 from studentlink.util import Semester
 import logging
@@ -35,6 +35,8 @@ async def main():
             s = await sl.module(Bldg).get_building("CAS")
             print(s)
             s = await sl.module(AllSched).get_schedule(True)
+            print(s)
+            s = await sl.module(Add).get_college_codes(semester)
             print(s)
             # s = await sl.module(Drop).get_drop_list(semester)
             # print(s)

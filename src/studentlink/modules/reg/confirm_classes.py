@@ -20,7 +20,7 @@ class ConfirmClasses(RegModule):
             "You requested a registration option not available for the semester."
             in page
         ):
-            raise UnavailableOptionError()
+            raise UnavailableOptionError("You requested a registration option not available for the semester.")
 
         soup = BeautifulSoup(page, "html5lib")
         data_rows: list[Tag]

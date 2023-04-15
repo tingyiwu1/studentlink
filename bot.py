@@ -13,7 +13,7 @@ from studentlink import StudentLinkAuth, LoginError, ConnectionError, InternalEr
 from studentlink.util import Semester, Abbr
 from studentlink.data.class_ import ClassView
 from studentlink.modules.browse_schedule import BrowseSchedule
-from studentlink.modules.reg import ConfirmClasses, Drop, ConfirmDrop
+from studentlink.modules.reg import ConfirmClasses, Drop, ConfirmDrop, UnavailableOptionError
 
 load_dotenv()
 
@@ -40,7 +40,7 @@ USERNAME, PASSWORD, DISC_URL = (
     os.environ["DISC_URL"],
 )
 
-SEMESTER = Semester.from_str("Spring 2023")
+SEMESTER = Semester.from_str("Fall 2023")
 
 
 class CannotReplace(Exception):
@@ -199,7 +199,11 @@ async def refresh_spec(
         if spec == old_spec:
             return old_spec
 
-        res = await sl.module(Drop).get_drop_list(SEMESTER)
+        try:
+            res = await sl.module(Drop).get_drop_list(SEMESTER)
+        except UnavailableOptionError:
+            logger.warning("Registration not open")
+            res = []
         can_drop = [cv.abbr for cv in res]
         if cannot_drop := [
             s["replace"]
@@ -240,9 +244,13 @@ async def poll():
                 logger.info("Successfully logged in, starting...")
             while True:
                 spec = await refresh_spec(sl, spec)
-                schedule = [
-                    cv.abbr for cv in await sl.module(Drop).get_drop_list(SEMESTER)
-                ]
+                try:
+                    res = await sl.module(Drop).get_drop_list(SEMESTER)
+                except UnavailableOptionError:
+                    logger.warning("Registration not open")
+                    await asyncio.sleep(5)
+                    continue
+                schedule = [cv.abbr for cv in res]
                 tasks = [
                     attempt_replace(sl, add=Abbr(s["add"]), replace=Abbr(s["replace"]))
                     if "replace" in s
@@ -256,6 +264,8 @@ async def poll():
                     logger.warning(e)
                 except InternalError as e:
                     logger.warning(e)
+                except UnavailableOptionError as e:
+                    logger.warning("Registration not open but still tried somehow")
                 except RegisterFail as e:
                     pass
                     # async with disc_log(session, "Register Fail") as logger:
