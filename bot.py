@@ -241,7 +241,7 @@ async def poll():
         ) as sl:
             spec = await refresh_spec(sl, [])
             async with disc_log(session, "Start") as logger:
-                logger.info("Successfully logged in, starting...")
+                logger.info("Successfully logged in as {USERNAME}, starting...")
             while True:
                 spec = await refresh_spec(sl, spec)
                 try:
