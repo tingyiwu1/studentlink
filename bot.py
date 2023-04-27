@@ -277,7 +277,7 @@ async def poll():
     except LoginError as e:
         async with disc_log(session, "Login Error") as logger:
             logger.error(e)
-    except ConnectionError as e:
+    except (ConnectionError, InternalError) as e:
         delay_stop = True
     except Exception as e:
         logger.error(e)
