@@ -13,7 +13,7 @@ from studentlink import StudentLinkAuth, LoginError, ConnectionError, InternalEr
 from studentlink.util import Semester, Abbr
 from studentlink.data.class_ import ClassView
 from studentlink.modules.browse_schedule import BrowseSchedule
-from studentlink.modules.reg import ConfirmClasses, Drop, ConfirmDrop, UnavailableOptionError
+from studentlink.modules.reg import ConfirmClasses, Drop, ConfirmDrop, UnavailableOptionError, Add
 
 load_dotenv()
 
@@ -202,7 +202,7 @@ async def refresh_spec(
         try:
             res = await sl.module(Drop).get_drop_list(SEMESTER)
         except UnavailableOptionError:
-            logger.warning("Registration not open")
+            logger.warning("No classes to drop or registration not open")
             res = []
         can_drop = [cv.abbr for cv in res]
         if cannot_drop := [
@@ -245,12 +245,17 @@ async def poll():
             while True:
                 spec = await refresh_spec(sl, spec)
                 try:
-                    res = await sl.module(Drop).get_drop_list(SEMESTER)
+                    res = await sl.module(Add).get_page(SEMESTER)
                 except UnavailableOptionError:
                     logger.warning("Registration not open")
                     await asyncio.sleep(5)
                     continue
-                schedule = [cv.abbr for cv in res]
+                try:
+                    res = await sl.module(Drop).get_drop_list(SEMESTER)
+                    schedule = [cv.abbr for cv in res]
+                except UnavailableOptionError:
+                    # logger.warning("Registration not open")
+                    schedule = []
                 tasks = [
                     attempt_replace(sl, add=Abbr(s["add"]), replace=Abbr(s["replace"]))
                     if "replace" in s
