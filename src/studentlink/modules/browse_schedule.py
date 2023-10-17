@@ -30,10 +30,15 @@ class BrowseSchedule(Module):
                 params[k] = v
         page = await self.get_page(params=params)
         if include_next_query:
-            next_query = re.findall(r'<INPUT.*NAME="College".*VALUE="([A-Z]{3})".*onFocus="ClearCollege\(\);">', page) + \
-                re.findall(r'<INPUT.*NAME="Dept".*VALUE="([A-Z]{2})".*>', page) + \
-                re.findall(r'<INPUT.*NAME="Course".*VALUE="(\d+)".*>', page) + \
-                re.findall(r'<INPUT.*NAME="Section".*VALUE="([A-Z\d]+)".*>', page)
+            next_query = (
+                re.findall(
+                    r'<INPUT.*NAME="College".*VALUE="([A-Z]{3})".*onFocus="ClearCollege\(\);">',
+                    page,
+                )
+                + re.findall(r'<INPUT.*NAME="Dept".*VALUE="([A-Z]{2})".*>', page)
+                + re.findall(r'<INPUT.*NAME="Course".*VALUE="(\d+)".*>', page)
+                + re.findall(r'<INPUT.*NAME="Section".*VALUE="([A-Z\d]+)".*>', page)
+            )
             return self.parse_class_list(page), next_query or None
         return self.parse_class_list(page)
 
@@ -100,19 +105,25 @@ class BrowseSchedule(Module):
                                 building = room = None
                             case Tag(name="br"), Tag(name="br"):
                                 continue
+                            case " ", " ":
+                                continue
                             case str(), str():
                                 building = Building(abbreviation=normalize(building))
                                 room = normalize(room)
-                        days = [Weekday[day] for day in normalize(days).split(",")]
-                        start = datetime.strptime(normalize(start), "%I:%M%p").time()
-                        stop = datetime.strptime(normalize(stop), "%I:%M%p").time()
+                        days = [
+                            Weekday[day] for day in normalize(days).split(",") if day
+                        ]
                         schedule += [
                             Event(
                                 building=building,
                                 room=room,
                                 day=day,
-                                start=start,
-                                stop=stop,
+                                start=datetime.strptime(
+                                    normalize(start), "%I:%M%p"
+                                ).time(),
+                                stop=datetime.strptime(
+                                    normalize(stop), "%I:%M%p"
+                                ).time(),
                             )
                             for day in days
                         ]
