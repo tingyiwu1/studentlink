@@ -40,7 +40,7 @@ USERNAME, PASSWORD, DISC_URL = (
     os.environ["DISC_URL"],
 )
 
-SEMESTER = Semester.from_str("Fall 2023")
+SEMESTER = Semester.from_str("spring 2024")
 
 
 class CannotReplace(Exception):
