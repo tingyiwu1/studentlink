@@ -244,9 +244,9 @@ async def poll():
                 logger.info(f"Successfully logged in as {USERNAME}, starting...")
             while True:
                 spec = await refresh_spec(sl, spec)
-                try:
-                    res = await sl.module(Add).get_page(SEMESTER)
-                except UnavailableOptionError:
+                
+                reg_open = await sl.module(Add).check_reg_open(SEMESTER)
+                if not reg_open:
                     logger.warning("Registration not open")
                     await asyncio.sleep(5)
                     continue
