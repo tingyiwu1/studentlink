@@ -13,7 +13,13 @@ from studentlink import StudentLinkAuth, LoginError, ConnectionError, InternalEr
 from studentlink.util import Semester, Abbr
 from studentlink.data.class_ import ClassView
 from studentlink.modules.browse_schedule import BrowseSchedule
-from studentlink.modules.reg import ConfirmClasses, Drop, ConfirmDrop, UnavailableOptionError, Add
+from studentlink.modules.reg import (
+    ConfirmClasses,
+    Drop,
+    ConfirmDrop,
+    UnavailableOptionError,
+    Add,
+)
 
 load_dotenv()
 
@@ -81,7 +87,9 @@ async def attempt_register(
                 logger.info(f"Successfully registered for {cv.abbr}")
             else:
                 logger.info(f"Failed to register for {cv.abbr}: {res[cv.abbr][1]}")
-                raise RegisterFail(f"Failed to register for {cv.abbr}: {res[cv.abbr][1]}")
+                raise RegisterFail(
+                    f"Failed to register for {cv.abbr}: {res[cv.abbr][1]}"
+                )
     else:
         logger.info(f"Cannot register for {abbr}")
 
@@ -91,6 +99,7 @@ async def attempt_replace(
     *,
     add: Abbr,
     replace: Abbr,
+    unsafe=False,
     logger: logging.Logger = logging.getLogger(),
 ):
     logger.info(f"Attempting to replace {replace} with {add}")
@@ -99,7 +108,7 @@ async def attempt_replace(
         async with disc_log(sl.session, add) as logger:
             logger.info(f"Can register for {cv1.abbr}")
             try:
-                async with replace_class(sl, replace, logger) as cv2:
+                async with replace_class(sl, replace, logger, unsafe) as cv2:
                     logger.info(f"Replacing {cv2.abbr} with {cv1.abbr}")
                     res = await sl.module(ConfirmClasses).confirm_class(
                         SEMESTER, cv1.reg_id
@@ -110,7 +119,9 @@ async def attempt_replace(
                         logger.info(
                             f"Failed to register for {cv1.abbr}: {res[cv1.abbr][1]}"
                         )
-                        raise RegisterFail(f"Failed to register for {cv1.abbr}: {res[cv1.abbr][1]}")
+                        raise RegisterFail(
+                            f"Failed to register for {cv1.abbr}: {res[cv1.abbr][1]}"
+                        )
             except CannotReplace as e:
                 logger.warning(e)
     else:
@@ -135,16 +146,22 @@ async def disc_log(session: ClientSession, name: str):
 
 @contextlib.asynccontextmanager
 async def replace_class(
-    sl: StudentLinkAuth, abbr: Abbr, logger: logging.Logger = logging.getLogger()
+    sl: StudentLinkAuth,
+    abbr: Abbr,
+    logger: logging.Logger = logging.getLogger(),
+    unsafe=False,
 ):
     """context manager to drop a class to make room for another."""
     cv_r, cv_d = await asyncio.gather(get_class_reg(sl, abbr), get_class_drop(sl, abbr))
     if cv_d is None or not cv_d.drop_id:
         raise CannotReplace(f"Cannot drop {abbr}")
     if cv_r is None or not cv_r.reg_id:
-        raise CannotReplace(
-            f"Cannot register for {abbr}. Try manually dropping if you want to risk it."
-        )
+        if unsafe:
+            logger.warning(f"Cannot register for {abbr}. Dropping anyway.")
+        else:
+            raise CannotReplace(
+                f"Cannot safely replace {abbr}. Try manually dropping or use unsafe=True"
+            )
     try:
         res = await sl.module(ConfirmDrop).confirm_drop(SEMESTER, cv_d.drop_id)
         if res[cv_d.abbr][0]:
@@ -211,7 +228,6 @@ async def refresh_spec(
             if "replace" in s and s["replace"] not in can_drop
         ]:
             logger.warning(f"These can't be dropped: {cannot_drop}")
-            return old_spec
 
         reg_cvs = await asyncio.gather(
             *(get_class_reg(sl, Abbr(s["add"])) for s in spec)
@@ -244,7 +260,7 @@ async def poll():
                 logger.info(f"Successfully logged in as {USERNAME}, starting...")
             while True:
                 spec = await refresh_spec(sl, spec)
-                
+
                 reg_open = await sl.module(Add).check_reg_open(SEMESTER)
                 if not reg_open:
                     logger.warning("Registration not open")
@@ -257,8 +273,13 @@ async def poll():
                     # logger.warning("Registration not open")
                     schedule = []
                 tasks = [
-                    attempt_replace(sl, add=Abbr(s["add"]), replace=Abbr(s["replace"]))
-                    if "replace" in s
+                    attempt_replace(
+                        sl,
+                        add=Abbr(s["add"]),
+                        replace=Abbr(s["replace"]),
+                        unsafe=s.get("unsafe", False),
+                    )
+                    if "replace" in s and s["replace"] in schedule
                     else attempt_register(sl, Abbr(s["add"]))
                     for s in spec
                     if s.get("add") not in schedule
@@ -298,7 +319,6 @@ async def poll():
                 logger.info("Stopped")
             cookie_jar.save("cookies.pickle")
             await session.close()
-        
 
 
 if __name__ == "__main__":
