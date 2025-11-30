@@ -96,7 +96,7 @@ class AiohttpMozillaCookieJar(CookieJar):
                 if (value := cookie_1.get_nonstandard_attr(key, None)) is not None:
                     morsel_2[key] = value
 
-            self._cookies[(domain, path)][name] = morsel_2
+            self._cookies[domain][name] = morsel_2
 
     def save(self, file_path: PathLike) -> None:
         file_path = Path(file_path)
@@ -114,10 +114,10 @@ class AiohttpMozillaCookieJar(CookieJar):
         # jar_1._cookies[domain][path] # dict
         # jar_1._cookies[domain][path][name] # Cookie
 
-        for (domain, path), cookie_2 in self._cookies.items():
+        for domain, cookie_2 in self._cookies.items():
             for name, morsel_2 in cookie_2.items():
                 try:
-                    expires = self._expirations[(domain, path, name)].timestamp()
+                    expires = self._expirations[(domain, name)].timestamp()
                 except KeyError:
                     try:
                         expires = datetime.strptime(
@@ -126,6 +126,8 @@ class AiohttpMozillaCookieJar(CookieJar):
                     except ValueError:
                         # morsel_2["expires"] can be empty string
                         expires = None
+                  
+                path = morsel_2["path"]
 
                 cookie_1 = Cookie(
                     0,  # version

@@ -1,4 +1,5 @@
 import asyncio
+from contextlib import asynccontextmanager
 import aiohttp
 import re
 import html
@@ -8,27 +9,49 @@ import studentlink
 from studentlink.modules.allsched import AllSched
 from studentlink.modules.regsched import RegSched
 from studentlink.modules.browse_schedule import BrowseSchedule
-from studentlink.modules.reg import AddPlanner, Plan, ConfirmClasses, Drop, Section, RegOptions, Add
+from studentlink.modules.reg import (
+    AddPlanner,
+    Plan,
+    ConfirmClasses,
+    Drop,
+    Section,
+    RegOptions,
+    Add,
+)
 from studentlink.modules.bldg import Bldg
 from studentlink.util import Semester
+from studentlink.cookies import AiohttpMozillaCookieJar
 import logging
 
 load_dotenv()
 logging.basicConfig(level=logging.INFO)
 
+
+@asynccontextmanager
+async def persist(cookie_jar: aiohttp.CookieJar, filename: str):
+    try:
+        cookie_jar.load(filename)
+    except FileNotFoundError:
+        pass
+    yield cookie_jar
+    cookie_jar.save(filename)
+
+
 USERNAME, PASSWORD = os.environ["USERNAME"], os.environ["PASSWORD"]
+# USERNAME, PASSWORD = '', ''
 
 
 async def main():
+    # cookie_jar = AiohttpMozillaCookieJar()
     cookie_jar = aiohttp.CookieJar()
-    try:
-        cookie_jar.load("cookies.pickle")
-    except FileNotFoundError:
-        pass
-    async with studentlink.StudentLinkAuth(
-        USERNAME, PASSWORD, session=aiohttp.ClientSession(cookie_jar=cookie_jar)
+    async with persist(
+        cookie_jar, "cookies2.txt"
+    ) as cookie_jar, aiohttp.ClientSession(
+        cookie_jar=cookie_jar
+    ) as session, studentlink.StudentLinkAuth(
+        USERNAME, PASSWORD, session=session
     ) as sl:
-        semester = Semester.from_str("spring 2023")
+        semester = Semester.from_str("spring 2024")
         while True:
             # s = await sl.module(AddPlanner).add_to_planner(semester, "0001129029")
             # s = await sl.module(ConfirmClasses).confirm_class(semester, "0001129029")
@@ -42,7 +65,7 @@ async def main():
             # print(s)
             # s = await sl.module(Section).get_section_change(semester)
             # print(s)
-            # break
+            break
         # mod2 = sl.module(BrowseSchedule)
         # s2 = await mod2.search_class(Semester.SPRING, 2023, "CAS", "PO", 396)
         # print(s2)
